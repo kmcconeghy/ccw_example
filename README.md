@@ -15,9 +15,7 @@ Companion documents have been written to assist interested readers with the back
 # Latest Version Updates  
 This package is in the early stages of development. Many features may change in a short amount of time.  
 
-# Future Goals for jumble  
-- Allow for arbitrary number of treatment groups
-- Expand balance measures beyond Mahalanobis
+# Future Goals  
 
 # Important References   
 
