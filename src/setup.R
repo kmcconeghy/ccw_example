@@ -3,7 +3,9 @@ cat('loading canon packages....')
 
   pkg_toload <- c('tidyverse', 
                   'lubridate', 'here', 'knitr', 'quarto',
-                  'survival')
+                  'survival', 'future', 'progressr', 
+                  'ggpubr', 'survminer', 'furrr',
+                  'data.table', 'parglm')
   
   hold_del <- sapply(pkg_toload, require, 
                      warn.conflicts=F, quietly=T,
