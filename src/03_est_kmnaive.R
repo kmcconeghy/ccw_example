@@ -32,7 +32,7 @@
 # Point estimate ----
 
   d_surv_pe = broom::tidy(
-    survfit(Surv(clone_time, outcome) ~ assign, data=d_cloned)) %>%
+    survfit(Surv(t_clone, event_outc) ~ assign, data=d_cloned)) %>%
     mutate(assign = str_extract(strata,  '(?<=assign=)\\d')
     ) %>%
     arrange(time) %>%
@@ -46,7 +46,7 @@
     mutate(cir = pr_e_1 / pr_e_0,
            cid = (pr_e_1 - pr_e_0))
 
-  d_survmin = ggsurvplot(survfit(Surv(clone_time, outcome) ~ assign, data=d_cloned),
+  d_survmin = ggsurvplot(survfit(Surv(t_clone, event_outc) ~ assign, data=d_cloned),
                             data=data_cloned,
                             fun = 'event',
                             xlim = c(0, 60),
@@ -79,7 +79,7 @@ d_fun_getkmres = function(dta, d_ids, ...) {
   
   dta_2 = left_join(dta, d_ids, by='id') 
   
-  fit_all = survfit(Surv(clone_time, outcome) ~ assign, data=dta_2, weights = freqwt)
+  fit_all = survfit(Surv(t_clone, event_outc) ~ assign, data=dta_2, weights = freqwt)
   
   # summarize results from KM estimator
   survdta = broom::tidy(fit_all) %>%

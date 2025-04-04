@@ -9,22 +9,21 @@ data_cloned = bind_rows(
                     # Assign = 0
                      data %>%
                        mutate(assign = 0,
-                              # censor if vaccinated in interval
-                              censor_art = if_else(treat_time < outc_time, 1L, 0L),
-                              censor_time = if_else(treat_time < outc_time, treat_time, Inf)
+                              # artificial censor if treated in interval
+                              t_artcens = if_else(t_treat < time, t_treat, Inf)
                        ),
                      # Assign = 1
                      data %>%
                        mutate(assign = 1,
-                              censor_art = if_else(treat_time <= 12, 0L, 1L),
-                              censor_time = if_else(treat_time > 12, 12, Inf)
+                              t_artcens = if_else(t_treat > 12, 12, Inf)
                               )
                        ) %>%
-  mutate(clone_time = pmin(outc_time, censor_time),
-         outcome = if_else(clone_time<outc_time, 0, outcome))
+  # Generate new failure time, accounting for artificial censoring
+  mutate(t_clone = pmin(time, t_artcens),
+         # update event counts
+         event_outc = if_else(t_clone<time, 0, event_outc))
 
 head(data_cloned)
 
-saveRDS(select(data_cloned, id, assign, clone_time, outcome, outc_time, treat, treat_time, 
-               censor_time, X1, X2),
+saveRDS(select(data_cloned, id, assign, t_clone, event_outc, time, t_artcens, t_treat, treat, X1, X2),
                here('dta', 'survdta_cloned.R'))

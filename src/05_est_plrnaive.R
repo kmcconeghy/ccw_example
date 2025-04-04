@@ -27,7 +27,7 @@
   # defined above
   set.seed(d_output$runplan$seed)
   
-  d_glm = glm(outcome ~ poly(time, 2, raw=T)*assign, data=d_panel, family=binomial())
+  d_glm = glm(event_outc ~ poly(time, 2, raw=T)*assign, data=d_panel, family=binomial())
   
   ## Survival probabilities ----
   d_panel$pr_ev = d_glm$fitted.values
