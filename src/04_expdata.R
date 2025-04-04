@@ -38,7 +38,7 @@ saveRDS(d_panel_2, here('dta', 'survdta_cloned_panel.R'))
     # keep one clone
     dplyr::filter(assign==0) %>%
     mutate(start=1,
-           end = clone_time) %>%
+           end = treat_time) %>%
     group_by(id) %>%
     mutate(
       time = pmin(outc_time, treat_time),

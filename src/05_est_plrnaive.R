@@ -27,10 +27,10 @@
   # defined above
   set.seed(d_output$runplan$seed)
   
-  d_glm_pe = glm(outcome ~ poly(time, 2, raw=T)*assign, data=d_panel, family=binomial())
+  d_glm = glm(outcome ~ poly(time, 2, raw=T)*assign, data=d_panel, family=binomial())
   
   ## Survival probabilities ----
-  d_panel$pr_ev = d_glm_pe$fitted.values
+  d_panel$pr_ev = d_glm$fitted.values
   
   d_panel[, `:=`(pr_surv = cumprod(1 - pr_ev)), by=list(id, assign)] 
   

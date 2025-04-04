@@ -24,11 +24,8 @@
   d_panel_outcome =  readRDS(here('dta', 'survdta_cloned_panel.R'))
   
 # Estimate Weights ----
-  # BOOTSTRAP HERE
-  
   # ADD BASELINE AND TIME_VARYING COVARIATES
-  d_glm_wt = glm(outcome ~ poly(time, 2, raw=T) + poly(X1, 2) + X2, data=d_panel_treat, family=binomial(),
-                 weights = freqwt)
+  d_glm_wt = glm(outcome ~ poly(time, 2, raw=T) + poly(X1, 2) + X2, data=d_panel_treat, family=binomial())
 
   # estimate pr(treat==1)
   d_panel_treat$pr_treat = d_glm_wt$fitted.values
@@ -62,62 +59,4 @@
   
   summary(d_panel_outcome$ipw)
 
-# Outcome model ----
-  
-  # defined above
-  # NO TIMEVARYING COVARIATES BUT CAN ADD BASELINE COVARIATES ( STRONG PREDICTORS OF OUTCOME)
-  d_glm_pe = glm(outcome ~ poly(time, 2, raw=T)*assign, data=d_panel_outcome, family=binomial(), weights = ipw)
-  
-  ## Survival probabilities ----
-  d_panel_outcome$pr_ev = d_glm_pe$fitted.values
-  
-  d_panel_outcome[, `:=`(pr_surv = cumprod(1 - pr_ev)), by=list(id, assign)] 
-  
-  d_res = d_panel_outcome %>%
-    group_by(assign, time) %>%
-    summarize(pr_ev = mean(1-pr_surv)) %>%
-    ungroup %>%
-    pivot_wider(., id_cols =c('time'), 
-                names_from = assign, 
-                names_prefix = 'pr_ev_',
-                values_from = pr_ev
-    ) %>%
-    mutate(cid = pr_ev_1 - pr_ev_0,
-           cir = pr_ev_1 / pr_ev_0)
-
-  ### Plot ----
-    d_gg_ci = d_res %>%
-      ggplot(aes(x=time)) +
-      geom_line(aes(y = pr_ev_0), color='red') +
-      geom_line(aes(y = pr_ev_1), color='blue') + 
-      scale_x_continuous(breaks = seq(0, 60, 6),
-                         limits = c(0, 60)) +
-      theme_bw() +
-      labs(x = 'Follow-up (years)', y = 'Cumulative incidence')
-
-    d_gg_rr = d_res %>%
-      ggplot(aes(x=time)) +
-      geom_line(aes(y = cir), color='green') + 
-      scale_y_continuous(limits = c(0.5, 1.1)) + 
-      scale_x_continuous(breaks = seq(0, 60, 6),
-                         limits = c(0, 60)) +
-      theme_bw() +
-      labs(x = 'Follow-up (years)', y = 'Relative Risk')
-    
-    d_gg_1 = ggarrange(d_gg_ci, d_gg_rr,
-                       nrow=1)
-    
-    ggsave( here('img', 
-                 paste0('survplot_plradj', '.jpeg')),
-            plot=d_gg_1, width = 12, height=8, dpi=300)
-
-# Save PLR est results ----
-  write_csv(d_res,
-    file = here('out', paste0('plradjoutc', '.csv'
-    ))
-  )
-
-d_output$results = d_res
-
-saveRDS(d_output, 
-        file = here('out', paste0('plradj.Rds')))
+# COVARIATE BALANCE ACROSS TIME ----
