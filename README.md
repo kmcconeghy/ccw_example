@@ -3,9 +3,12 @@ Clone-Censor-Weight Tutorial
 
 # Overview  
 
-A series of vignettes to assist collaborators with understanding the techniques for executing a target trial emulation where individuals are cloned and assigned to two or more treatment strategies, censored for non-adherence and weighted by the inverse probability of remaining uncensored.  
+A series of codefiles and vignettes to assist collaborators with understanding the techniques for executing a target trial emulation where individuals are cloned and assigned to two or more treatment strategies, censored for non-adherence and weighted by the inverse probability of remaining uncensored.  
 
 # Usage  
+
+1) Run the `onetime.R` file initialize Renv package and install necessary packages.  
+2) Run files in order, `01_*.R-0#_*.R)`.   
 
 Select each vignette to explore an aspect of target trial emulation methods.  
 

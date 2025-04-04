@@ -10,8 +10,8 @@ data_cloned = bind_rows(
                      data %>%
                        mutate(assign = 0,
                               # censor if vaccinated in interval
-                              censor_art = if_else(treat_time < failure_time, 1L, 0L),
-                              censor_time = if_else(treat_time < failure_time, treat_time, Inf)
+                              censor_art = if_else(treat_time < outc_time, 1L, 0L),
+                              censor_time = if_else(treat_time < outc_time, treat_time, Inf)
                        ),
                      # Assign = 1
                      data %>%
@@ -20,9 +20,11 @@ data_cloned = bind_rows(
                               censor_time = if_else(treat_time > 12, 12, Inf)
                               )
                        ) %>%
-  mutate(clone_time = pmin(time, censor_time),
-         outcome = if_else(clone_time<time, 0, outcome))
+  mutate(clone_time = pmin(outc_time, censor_time),
+         outcome = if_else(clone_time<outc_time, 0, outcome))
 
 head(data_cloned)
 
-saveRDS(data_cloned, here('dta', 'survdta_cloned.R'))
+saveRDS(select(data_cloned, id, assign, clone_time, outcome, outc_time, treat, treat_time, 
+               censor_time, X1, X2),
+               here('dta', 'survdta_cloned.R'))

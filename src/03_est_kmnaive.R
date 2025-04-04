@@ -1,6 +1,8 @@
 # setup -----
-  source("~/R/ccw_example/src/setup.R", echo=F)
+  library(here())
   
+  source(here('src', 'setup.R'), echo=F)
+
   #increase size for bootstrapping procedure
   options(future.globals.maxSize = 4000*1024^2) 
 
@@ -11,7 +13,7 @@
   #analysis options stored in list and saved
   d_output = list(runtime = Sys.time(),
                   #params = l_tte_params,
-                  runplan = list(boots = 500,
+                  runplan = list(boots = 50, #bootstraps
                                  workers = 8,
                                  seed = as.integer(ymd('2024-11-16'))
                                  ))
@@ -26,32 +28,6 @@
 # Run a simple Kaplan-Meier, No adjustments made ----
   ## Kaplan-Meier function ----
   # one row per clone, not panel data, needs time, event, treat variables
-
-  d_fun_getkmres = function(dta, d_ids, ...) {
-    
-    # For Poisson bootstrap - cluster by person
-    d_ids = mutate(d_ids, freqwt = rpois(n(), 1L))
-    
-    dta_2 = left_join(dta, d_ids, by='id') 
-    
-    fit_all = survfit(Surv(clone_time, outcome) ~ assign, data=dta_2, weights = freqwt)
-    
-    survdta = broom::tidy(fit_all) %>%
-      mutate(assign = str_extract(strata,  '(?<=assign=)\\d')
-      ) %>%
-      arrange(time) %>%
-      select(-strata) %>%
-      mutate(pr_e = 1-estimate) %>%
-      rename(pr_s = estimate) %>%
-      pivot_wider(id_cols = c(time), 
-                  names_from = assign,
-                  values_from = c(pr_e, pr_s,
-                                  n.risk, n.event)) %>%
-      mutate(cir = pr_e_1 / pr_e_0,
-             cid = (pr_e_1 - pr_e_0))
-    
-    return(survdta)
-  }
 
 # Point estimate ----
 
@@ -94,6 +70,35 @@ plan(multisession, workers = d_output$runplan$workers)
 set.seed(d_output$runplan$seed)
 
 # bootstrap 
+d_fun_getkmres = function(dta, d_ids, ...) {
+  
+  # For Poisson bootstrap - cluster by person
+  # Generate a frequency weight for each person
+  # Wt ~ Poisson(Lambda=1)
+  d_ids = mutate(d_ids, freqwt = rpois(n(), 1L))
+  
+  dta_2 = left_join(dta, d_ids, by='id') 
+  
+  fit_all = survfit(Surv(clone_time, outcome) ~ assign, data=dta_2, weights = freqwt)
+  
+  # summarize results from KM estimator
+  survdta = broom::tidy(fit_all) %>%
+    mutate(assign = str_extract(strata,  '(?<=assign=)\\d')
+    ) %>%
+    arrange(time) %>%
+    select(-strata) %>%
+    mutate(pr_e = 1-estimate) %>% # cumulative incidence
+    rename(pr_s = estimate) %>%
+    pivot_wider(id_cols = c(time), 
+                names_from = assign,
+                values_from = c(pr_e, pr_s,
+                                n.risk, n.event)) %>%
+    mutate(cir = pr_e_1 / pr_e_0, # relative risk
+           cid = (pr_e_1 - pr_e_0)) # risk difference
+  
+  return(survdta)
+}
+
   d_bs = future_map(.x = 1:d_output$runplan$boots, 
                        .f = ~d_fun_getkmres(d_cloned, d_ids, .x),
                        .options = furrr_options(seed = T))
@@ -133,6 +138,7 @@ set.seed(d_output$runplan$seed)
     d_gg_rr = d_summ_surv %>%
       ggplot(aes(x=time)) +
       geom_line(aes(y = cir), color='green') +
+      geom_hline(aes(yintercept=1), linetype=2) +
       geom_ribbon(aes(ymin = cir_lc, ymax = cir_uc), 
                   fill='green', alpha=0.2) + 
       scale_y_continuous(limits = c(0.5, 1.1)) +

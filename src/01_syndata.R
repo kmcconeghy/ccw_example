@@ -1,4 +1,7 @@
-source("~/R/ccw_example/src/setup.R", echo=F)
+library(here())
+
+source(here('src', 'setup.R'), echo=F)
+
 # Set seed for reproducibility
 set.seed(42)
 
@@ -16,6 +19,10 @@ n <- 10000
 
 # Simulate failure times (exponential distribution for simplicity)
   failure_time <- round(rexp(n, rate = 0.05))
+  
+  ## 10% difference
+  failure_time <- if_else(treat==1, failure_time, round(failure_time*0.5))
+  
   treat_time <- ifelse(treat==1, round(rexp(n, rate = 0.1)), Inf)
   
 # Simulate censoring (e.g., 20% censored)
@@ -30,13 +37,13 @@ data <- data.frame(
   X2 = female,
   treat = treat,
   treat_time = treat_time, # need a time treatment initiated
-  time = failure_time,
+  outc_time = failure_time,
   censor_nat = censor_status, #natural censoring, i.e. competing risk or adm end
   outcome = outcome
 ) %>%
   mutate(id = row_number())
 
 # quick test
-survfit(Surv(time, outcome) ~ treat, data = data)
+survfit(Surv(outc_time, outcome) ~ treat, data = data)
   
 saveRDS(data, here('dta', 'survdta.R'))

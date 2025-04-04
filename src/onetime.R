@@ -1,4 +1,6 @@
 # To be run once at project start
-  renv::init()
+  #renv::init()
   install.packages('remotes')
-  install.packages(c('tidyverse', 'lubridate', 'here', 'knitr', 'quarto'))
+  install.packages(c('tidyverse', 'lubridate', 'here', 'knitr', 'quarto',
+                     'future', 'progressr', 'ggpubr', 'survminer',
+                     'furrr', 'data.table', 'parglm'))
