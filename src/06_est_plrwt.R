@@ -17,24 +17,54 @@
                                  seed = as.integer(ymd('2024-11-16'))
                                  ))
   
-  d_panel =  readRDS(here('dta', 'survdta_cloned_panel.R'))
-  setDT(d_panel)
-  
-# Naive estimator ----
-
-# Run Plan ----
-  
-  # defined above
   set.seed(d_output$runplan$seed)
   
-  d_glm_pe = glm(outcome ~ poly(time, 2, raw=T)*assign, data=d_panel, family=binomial())
+  d_panel_treat =  readRDS(here('dta', 'survdta_treat_panel.R'))
+  
+  d_panel_outcome =  readRDS(here('dta', 'survdta_cloned_panel.R'))
+  
+# Estimate Weights ----
+  d_glm_wt = glm(outcome ~ poly(time, 2, raw=T) + poly(X1, 2) + X2, data=d_panel_treat, family=binomial())
+  
+  # estimate pr(treat==1)
+  d_panel_treat$pr_treat = d_glm_wt$fitted.values
+  
+  # Calculative cumulative probability of non-treatment (treatment-free survival)
+  setDT(d_panel_treat)
+  d_panel_treat[, cumpr_notreat := cumprod(1-pr_treat), by = .(id)]
+  
+  # only need probabilities to join to outcome dataset
+  d_panel_treat = select(d_panel_treat, id, time, cumpr_notreat)
+  
+  # join probability to outcome dataset
+  d_panel_outcome = left_join(d_panel_outcome, d_panel_treat, by=c('id', 'time'))
+  
+  # calculate IPW
+  setDT(d_panel_outcome)
+  
+  d_panel_outcome[, ipw := fcase(
+    #cumpr_0; cumulative probability of no vaccination at time t
+    assign==0, 1 / cumpr_notreat, 
+    assign==1 & time < 12, 1, # trt - cant censor prior to grace
+    assign==1 & time == 12 & treat_time < 12, 1, # assign=1 & treat time < grace end, cant censor at grace
+    assign==1 & time==12 & treat_time==12, 1 / (1-cumpr_notreat), # treated at grace, then weight
+    assign==1 & time==12 & treat_time>12, 0, # assign=1, and not treated before grace, censor
+    assign==1 & time > 12, 1 # assign=1, after grace period, assign all weights as 1
+  )]
+  
+  summary(d_panel_outcome$ipw)
+
+# Outcome model ----
+  
+  # defined above
+  d_glm_pe = glm(outcome ~ poly(time, 2, raw=T)*assign, data=d_panel_outcome, family=binomial(), weights = ipw)
   
   ## Survival probabilities ----
-  d_panel$pr_ev = d_glm_pe$fitted.values
+  d_panel_outcome$pr_ev = d_glm_pe$fitted.values
   
-  d_panel[, `:=`(pr_surv = cumprod(1 - pr_ev)), by=list(id, assign)] 
+  d_panel_outcome[, `:=`(pr_surv = cumprod(1 - pr_ev)), by=list(id, assign)] 
   
-  d_res = d_panel %>%
+  d_res = d_panel_outcome %>%
     group_by(assign, time) %>%
     summarize(pr_ev = mean(1-pr_surv)) %>%
     ungroup %>%
@@ -69,17 +99,16 @@
                        nrow=1)
     
     ggsave( here('img', 
-                 paste0('survplot_logmodunadj', '.jpeg')),
+                 paste0('survplot_plradj', '.jpeg')),
             plot=d_gg_1, width = 12, height=8, dpi=300)
 
-# Save KM est results ----
-  write_csv(d_summ_surv,
-    file = here('out', paste0(prj.specs$prj.prefix, '.', 
-                                 'plrnaiveoutc', '.csv'
+# Save PLR est results ----
+  write_csv(d_res,
+    file = here('out', paste0('plradjoutc', '.csv'
     ))
   )
 
-d_output$results = d_bs
+d_output$results = d_res
 
 saveRDS(d_output, 
-        file = here('out', paste0('plrnaive', '.', f_tstmp(), '.Rds')))
+        file = here('out', paste0('plradj.Rds')))

@@ -8,4 +8,6 @@ source(here('src', 'setup.R'), echo=F)
   source(here('src', '02_clone.R'))
   source(here('src', '03_est_kmnaive.R'))
   source(here('src', '04_expdata.R'))
+  source(here('src', '05_est_plrnaive.R'))
+  source(here('src', '06_est_plrwt.R'))
 

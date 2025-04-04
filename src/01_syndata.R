@@ -15,15 +15,30 @@ n <- 10000
   female <- sample(c(1, 0), size = n, replace = TRUE, prob = c(0.66, 0.34))
 
 # Generate treatment status (10% treated, 90% control)
-  treat <- sample(c(1, 0), size = n, replace = TRUE, prob = c(0.1, 0.9))
+  treat <- sample(c(1, 0), size = n, replace = TRUE, prob = c(0.2, 0.9))
 
 # Simulate failure times (exponential distribution for simplicity)
-  failure_time <- round(rexp(n, rate = 0.05))
+  hr_treatment = 0.8
+  hr_gender = 0.9
+  hr_age = 0.98
   
-  ## 10% difference
-  failure_time <- if_else(treat==1, failure_time, round(failure_time*0.5))
+  # Calculate linear predictor (log-hazard)
+  lp_outc <- log(hr_treatment) * treat +
+    log(hr_gender) * female +
+    log(hr_age) * age
   
-  treat_time <- ifelse(treat==1, round(rexp(n, rate = 0.1)), Inf)
+  # Simulate baseline survival times (exponential distribution)
+  baseline_hazard <- 0.05
+  baseline_survival <- rexp(n, rate = baseline_hazard)
+  
+  # Adjust survival times based on linear predictor
+  failure_time <- round(baseline_survival * exp(-lp_outc))
+
+  lp_treat <- log(0.7) * female +
+    log(1.02) * age
+  
+  baseline_hazard <- 0.1
+  treat_time <- ifelse(treat==1, round(rexp(n, rate = baseline_hazard)* exp(-lp_treat)), Inf)
   
 # Simulate censoring (e.g., 20% censored)
   censor_status <- sample(c(0, 1), size = n, replace = TRUE, prob = c(0.2, 0.8)) # 0 = censored, 1 = observed

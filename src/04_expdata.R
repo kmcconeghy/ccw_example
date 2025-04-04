@@ -28,6 +28,41 @@ source(here('src', 'setup.R'), echo=F)
     
     setDF(d_panel)
     
-    d_panel_2 = select(d_panel, id, time, outcome, treat, assign, enter, exit, end)
+    d_panel_2 = select(d_panel, id, time, outcome, treat_time, assign, enter, exit, end) %>%
+      dplyr::filter(time<=60)
 
 saveRDS(d_panel_2, here('dta', 'survdta_cloned_panel.R'))
+
+# TIME-VARYING FOR WEIGHTS ----
+  d_treat = readRDS(here('dta', 'survdta_cloned.R')) %>%
+    # keep one clone
+    dplyr::filter(assign==0) %>%
+    mutate(start=1,
+           end = clone_time) %>%
+    group_by(id) %>%
+    mutate(
+      time = pmin(outc_time, treat_time),
+      outcome = if_else(time==treat_time, 0, 1)
+    ) %>%
+    ungroup
+
+  # Expand data so one row per unit of follow-up
+  # data.table is faster  
+  setDT(d_treat)
+  
+  d_panel = d_treat[rep(seq(.N), time)]
+  
+  d_panel[, exit := (seq_len(.N)), by = list(id)]
+  d_panel[, enter := exit-1]
+  d_panel[, time := seq_len(.N), by = list(id)]
+  
+  # Outcome is = 1 in row where treat occurred
+  d_panel[, outcome := if_else(treat_time <= time, 1L, 0L), by = list(id)]
+  
+  setDF(d_panel)
+  
+  d_panel_2 = select(d_panel, id, time, outcome, treat, enter, exit, end, X1, X2) %>%
+    dplyr::filter(time<=60)
+
+  saveRDS(d_panel_2, here('dta', 'survdta_treat_panel.R'))
+  

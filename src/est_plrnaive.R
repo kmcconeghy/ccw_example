@@ -1,12 +1,7 @@
 # setup -----
-  source("P:/ORD_Mcconeghy_202404036D/rzv/src/r/set_start.R")
-  
-  library(future)
-  library(progressr)
-  library(parglm)
-  library(survival)
-  library(furrr)
-  library(ggpubr)
+library(here())
+
+source(here('src', 'setup.R'), echo=F)
 
   #increase size for bootstrapping procedure
   options(future.globals.maxSize = 4000*1024^2) 

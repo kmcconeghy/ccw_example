@@ -73,13 +73,11 @@
             plot=d_gg_1, width = 12, height=8, dpi=300)
 
 # Save KM est results ----
-  write_csv(d_summ_surv,
-    file = here('out', paste0(prj.specs$prj.prefix, '.', 
-                                 'plrnaiveoutc', '.csv'
-    ))
+  write_csv(d_res,
+    file = here('out', paste0('plrnaiveoutc.csv'))
   )
 
-d_output$results = d_bs
+d_output$results = d_res
 
 saveRDS(d_output, 
-        file = here('out', paste0('plrnaive', '.', f_tstmp(), '.Rds')))
+        file = here('out', paste0('plrnaive.Rds')))
