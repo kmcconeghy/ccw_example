@@ -10,4 +10,5 @@ source(here('src', 'setup.R'), echo=F)
   source(here('src', '04_expdata.R'))
   source(here('src', '05_est_plrnaive.R'))
   source(here('src', '06_est_plrwt.R'))
+  source(here('src', '07_assess_balance.R'))
 

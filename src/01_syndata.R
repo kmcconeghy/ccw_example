@@ -6,7 +6,7 @@ source(here('src', 'setup.R'), echo=F)
 set.seed(42)
 
 # Number of participants
-n <- 1000
+n <- 2000
 
 # COVARIATES ----
 
