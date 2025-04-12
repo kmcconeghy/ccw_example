@@ -63,4 +63,4 @@ n <- 2000
 # quick test
 survfit(Surv(time, event_outc) ~ treat, data = data)
   
-saveRDS(data, here('dta', 'survdta.R'))
+saveRDS(data, here('dta', 'survdta.Rds'))

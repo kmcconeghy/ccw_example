@@ -13,14 +13,14 @@
   #analysis options stored in list and saved
   d_output = list(runtime = Sys.time(),
                   #params = l_tte_params,
-                  runplan = list(boots = 50, #bootstraps
+                  runplan = list(boots = 200, #bootstraps
                                  workers = 8,
                                  seed = as.integer(ymd('2024-11-16'))
                                  ))
 
 # Clone ----
 
-  d_cloned = readRDS(here('dta', 'survdta_cloned.R'))
+  d_cloned = readRDS(here('dta', 'survdta_cloned.Rds'))
   d_ids = distinct(d_cloned, id) # list of unique person IDs (for bootstrap)
   
 # Naive estimator ----

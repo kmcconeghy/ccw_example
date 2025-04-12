@@ -13,7 +13,7 @@
   #analysis options stored in list and saved
   d_output = list(runtime = Sys.time(),
                   #params = l_tte_params,
-                  runplan = list(boots = 50,
+                  runplan = list(boots = 200,
                                  workers = 8,
                                  seed = as.integer(ymd('2024-11-16'))
                                  ))

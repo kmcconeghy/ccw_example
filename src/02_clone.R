@@ -26,4 +26,4 @@ data_cloned = bind_rows(
 head(data_cloned)
 
 saveRDS(select(data_cloned, id, assign, t_clone, event_outc, time, t_artcens, t_treat, treat, X1, X2),
-               here('dta', 'survdta_cloned.R'))
+               here('dta', 'survdta_cloned.Rds'))

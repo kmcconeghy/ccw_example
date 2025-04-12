@@ -10,7 +10,7 @@ source(here('src', 'setup.R'), echo=F)
 
   # start - time 0 (1)
   # end - censor time (event, censor, end of follow-up etc.)
-  d_cloned = readRDS(here('dta', 'survdta_cloned.R')) %>%
+  d_cloned = readRDS(here('dta', 'survdta_cloned.Rds')) %>%
     mutate(start=1,
            end = t_clone)
 
@@ -31,10 +31,10 @@ source(here('src', 'setup.R'), echo=F)
     
     d_panel_2 = select(d_panel, id, time, event_outc, t_treat, assign, enter, exit, end) 
 
-  saveRDS(d_panel_2, here('dta', 'survdta_cloned_panel.R'))
+  saveRDS(d_panel_2, here('dta', 'survdta_cloned_panel.Rds'))
 
 # TIME-VARYING FOR WEIGHTS ----
-  d_treat = readRDS(here('dta', 'survdta_cloned.R')) %>%
+  d_treat = readRDS(here('dta', 'survdta_cloned.Rds')) %>%
     # keep one clone
     dplyr::filter(assign==0) %>%
     mutate(start=1,
@@ -63,5 +63,5 @@ source(here('src', 'setup.R'), echo=F)
   
   d_panel_2 = select(d_panel, id, time, event_treat, t_treat, enter, exit, end, X1, X2) 
 
-  saveRDS(d_panel_2, here('dta', 'survdta_treat_panel.R'))
+  saveRDS(d_panel_2, here('dta', 'survdta_treat_panel.Rds'))
   

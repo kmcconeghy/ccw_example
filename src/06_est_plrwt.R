@@ -13,7 +13,7 @@
   #analysis options stored in list and saved
   d_output = list(runtime = Sys.time(),
                   #params = l_tte_params,
-                  runplan = list(boots = 50,
+                  runplan = list(boots = 200,
                                  workers = 8,
                                  seed = as.integer(ymd('2024-11-16'))
                                  ))
@@ -74,7 +74,7 @@
   ## Survival probabilities 
   d_panel_outcome$pr_ev = d_glm_pe$fitted.values
   
-  d_panel_outcome[, `:=`(pr_surv = cumprod(1 - pr_ev)), by=list(id, assign)] 
+  d_panel_outcome[, pr_surv := cumprod(1 - pr_ev), by=list(id, assign)] 
   
   setDF(d_panel_outcome)
   
@@ -97,40 +97,42 @@
   set.seed(d_output$runplan$seed)
   
   # FUNCTION TO RUN ITERATIVELY ###
-  d_fun_getplrwt = function(dta_outc, dta_treat, d_ids, ...) {
+  d_fun_getplrwt = function(dta_outc, dta_treat, ...) {
     
     # For Poisson bootstrap - cluster by person
     # Generate a frequency weight for each person
     # Wt ~ Poisson(Lambda=1)
-    d_ids = mutate(d_ids, freqwt = rpois(n(), 1L))
+    d_freqwt = distinct(dta_outc, id) %>% 
+      mutate(., freqwt = rpois(n(), 1L))
     
-    dta_2 = left_join(dta_treat, d_ids, by='id') 
+    dta_outc = left_join(dta_outc, d_freqwt, by='id')
     
-    d_glm_wt = glm(event_treat ~ poly(time, 2, raw=T) + poly(X1, 2) + X2, data=dta_2, family=binomial(),
-                   weights=freqwt)
+    dta_2 = left_join(dta_treat, d_freqwt, by='id') 
+    
+    d_glm_wt = glm(event_treat ~ poly(time, 2, raw=T) + poly(X1, 2) + X2, 
+                   data=dta_2, family=binomial(), weights=freqwt)
     
     dta_2$pr_treat = d_glm_wt$fitted.values
     setDT(dta_2)
     dta_2[, cumpr_notreat := cumprod(1-pr_treat), by = .(id)]
-    dta_3 = left_join(dta_outc, d_ids, by='id')
-    dta_3 = left_join(dta_3, dta_2, by=c('id', 'time'))    
+    dta_3 = left_join(dta_outc, select(dta_2, id, time, cumpr_notreat), by=join_by(id, time))    
     setDT(dta_3)
-    dta_3[, ipw := fcase(
-      assign==0, 1 / cumpr_notreat, 
-      assign==1 & time < 12, 1, # trt - cant censor prior to grace
-      assign==1 & time == 12 & t_treat < 12, 1, # assign=1 & treat time < grace end, cant censor at grace
-      assign==1 & time==12 & t_treat==12, 1 / (1-cumpr_notreat), # treated at grace, then weight
-      assign==1 & time==12 & t_treat>12, 0, # assign=1, and not treated before grace, censor
-      assign==1 & time > 12, 1 # assign=1, after grace period, assign all weights as 1
-    )]
-    dta_3[assign==1, ipw := cumprod(ipw), by=list(id, assign)]
-    d_glm_pe = glm(event_outc ~ poly(time, 2, raw=T)*assign, data=dta_3, 
-                   family=binomial(), weights = ipw*freqwt)
+      dta_3[, ipw := fcase(
+        assign==0, 1 / cumpr_notreat, 
+        assign==1 & time < 12, 1, 
+        assign==1 & time == 12  & t_treat <  12, 1,
+        assign==1 & time == 12  & t_treat == 12, 1 / (1-cumpr_notreat), 
+        assign==1 & time == 12  & t_treat >  12, 0, 
+        assign==1 & time > 12, 1)]
+      dta_3[assign==1, ipw := cumprod(ipw), by=list(id, assign)]
+      d_glm_pe = glm(event_outc ~ poly(time, 2, raw=T)*assign, data=dta_3, 
+                     family=binomial(), weights = ipw*freqwt)
     dta_3$pr_ev = d_glm_pe$fitted.values
-    dta_3[, `:=`(pr_surv = cumprod(1 - pr_ev)), by=list(id, assign)] 
+    dta_3[, pr_surv := cumprod(1 - pr_ev), by=list(id, assign)] 
     d_res = dta_3 %>%
       group_by(assign, time) %>%
-      summarize(pr_ev = weighted.mean(1-pr_surv, w = freqwt)) %>%
+      summarize(pr_ev = weighted.mean(1-pr_surv, w = freqwt),
+                .groups = 'drop') %>%
       ungroup %>%
       pivot_wider(., id_cols =c('time'), 
                   names_from = assign, 
@@ -171,18 +173,24 @@
   
   
   ### Plot ----
-    d_gg_ci = d_res %>%
-      ggplot(aes(x=time)) +
-      geom_line(aes(y = pr_ev_0), color='red') +
-      geom_line(aes(y = pr_ev_1), color='blue') + 
-      scale_x_continuous(breaks = seq(0, 60, 6),
-                         limits = c(0, 60)) +
-      theme_bw() +
-      labs(x = 'Follow-up', y = 'Cumulative incidence')
+    d_gg_ci = d_summ_surv %>%
+    ggplot(aes(x=time)) +
+    geom_line(aes(y = pr_ev_0), color='red', linewidth=1.2) +
+    geom_line(aes(y = pr_ev_1), color='blue', linewidth=1.2, linetype=2) + 
+    geom_ribbon(aes(ymin = pr_ev_0_lc, ymax = pr_ev_0_uc), 
+                fill='red', alpha=0.2) + 
+    geom_ribbon(aes(ymin = pr_ev_1_lc, ymax = pr_ev_1_uc), 
+                fill='blue', alpha=0.2) +
+    scale_x_continuous(breaks = seq(0, 60, 6),
+                       limits = c(0, 60)) +
+    theme_bw() +
+    labs(x = 'Follow-up', y = 'Cumulative incidence')
 
-    d_gg_rr = d_res %>%
+    d_gg_rr = d_summ_surv %>%
       ggplot(aes(x=time)) +
-      geom_line(aes(y = cir), color='green') + 
+      geom_line(aes(y = cir), color='green', linewidth=1.2) + 
+      geom_ribbon(aes(ymin = cir_lc, ymax = cir_uc), 
+                  fill='green', alpha=0.2) + 
       scale_y_continuous(limits = c(0.5, 1.1)) + 
       scale_x_continuous(breaks = seq(0, 60, 6),
                          limits = c(0, 60)) +
